@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF8ED"/>
+      <stop offset="1" stop-color="#E7F0EB"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#332F2B" flood-opacity=".18"/>
+    </filter>
+  </defs>
+  <rect x="72" y="72" width="880" height="880" rx="210" fill="url(#paper)" filter="url(#shadow)"/>
+  <path d="M343 371c-48-82-41-148 12-169 57-23 114 43 126 132M681 371c48-82 41-148-12-169-57-23-114 43-126 132" fill="#DDEBE6" stroke="#302D2A" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M287 534c0-151 102-252 225-252s225 101 225 252c0 175-91 288-225 288S287 709 287 534Z" fill="#F7D5BB" stroke="#302D2A" stroke-width="34"/>
+  <path d="M314 456c33-112 109-174 198-174s165 62 198 174c-63-35-121-53-198-53s-135 18-198 53Z" fill="#5F958A"/>
+  <path d="M396 535c20 0 37 17 37 37s-17 37-37 37-37-17-37-37 17-37 37-37Zm232 0c20 0 37 17 37 37s-17 37-37 37-37-17-37-37 17-37 37-37Z" fill="#302D2A"/>
+  <path d="M464 657c32 29 64 29 96 0" fill="none" stroke="#302D2A" stroke-width="27" stroke-linecap="round"/>
+  <path d="M338 642c-31-8-56 1-73 27m421-27c31-8 56 1 73 27" fill="none" stroke="#E88783" stroke-width="22" stroke-linecap="round" opacity=".72"/>
+  <path d="M512 639c-17 0-30-13-30-30h60c0 17-13 30-30 30Z" fill="#302D2A"/>
+  <path d="M699 775c55-48 106-5 82 36-14 24-47 44-82 69-35-25-68-45-82-69-24-41 27-84 82-36Z" fill="#F17479" stroke="#302D2A" stroke-width="22" stroke-linejoin="round"/>
+</svg>
