@@ -11,6 +11,16 @@ icon-build/
 # Private local repair data — may contain imported photos
 crop-repair-backup/
 
+# Imported/user photos must never be staged by accident. The app icon files
+# already tracked in AppIcon.iconset remain tracked despite these patterns.
+*.jpg
+*.jpeg
+*.png
+*.heic
+*.webp
+*.tif
+*.tiff
+
 # Logs and distributable binaries belong in GitHub Releases, not source history
 *.log
 *.app
