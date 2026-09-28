@@ -1,0 +1,18 @@
+# macOS metadata
+.DS_Store
+
+# Local build products and compiler caches
+.build/
+build/
+.module-cache-v1/
+.sdk-patched-v1/
+icon-build/
+
+# Private local repair data — may contain imported photos
+crop-repair-backup/
+
+# Logs and distributable binaries belong in GitHub Releases, not source history
+*.log
+*.app
+*.zip
+outputs/
