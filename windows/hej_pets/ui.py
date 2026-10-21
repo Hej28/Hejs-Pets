@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (QAbstractButton, QApplication, QCheckBox, QComboB
 from .data import ACTIONS, clamp, face_rect, open_image, paint_mask
 from .drawing import Character, color, qimage
 from .motion import Motion
+from .native import configure_overlay
 
 STYLE='''
 QWidget { color: #393632; font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif; font-size: 13px; }
@@ -56,6 +57,9 @@ class PetWindow(QWidget):
         self.motion=Motion(left+16+seed*max(40,right-left-32),bottom,store.settings,store.delay)
         self.motion.direction=-1 if seed>.5 else 1
         self.last_drag=time.monotonic();self.place()
+
+    def showEvent(self,event):
+        super().showEvent(event);configure_overlay(self)
 
     def bounds(self):
         screen=self.active_screen or QApplication.primaryScreen()
