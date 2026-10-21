@@ -4,7 +4,9 @@ Windows 10/11 x64 客户端，移植自同仓库 macOS 4.1 版。主窗口沿用
 
 ## 使用
 
-正式构建提供两种形式：
+[下载安装包](https://github.com/Hej28/Hejs-Pets/releases/download/windows-v4.1.0-preview.1/HejsPets-4.1.0-Windows-Setup.exe) · [下载便携版](https://github.com/Hej28/Hejs-Pets/releases/download/windows-v4.1.0-preview.1/HejsPets-4.1.0-Windows-Portable.zip) · [版本说明与校验值](https://github.com/Hej28/Hejs-Pets/releases/tag/windows-v4.1.0-preview.1)
+
+构建提供两种形式：
 
 - `HejsPets-4.1.0-Windows-Setup.exe`：按用户安装，不需要管理员权限，建立开始菜单入口，可选桌面快捷方式。
 - `HejsPets-4.1.0-Windows-Portable.zip`：完整解压后运行文件夹内 `HejsPets.exe`。不能只复制其中的 exe；旁边的 `_internal` 是运行库。无需安装 Python。

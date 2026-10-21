@@ -109,6 +109,12 @@ class MotionTests(unittest.TestCase):
     def test_settings_change_does_not_teleport_drag(self):
         self.m.start_drag(100,100);self.m.drag(300,400,.03);x,y=self.m.x,self.m.y
         self.s['actionMode']='dance';self.m.tick(.03,self.bounds);self.assertEqual((self.m.x,self.m.y),(x,y));self.assertEqual(self.m.state,'dragging')
+    def test_bubble_timer_survives_a_long_frame(self):
+        self.m.next_bubble=1
+        self.m.tick(5,self.bounds)
+        self.assertIsNotNone(self.m.bubble)
+        self.assertAlmostEqual(self.m.phase,.54)
+
     def test_tiny_screen_terminates(self):
         self.m.advance_perimeter(100,(0,0,0,0));self.assertEqual(self.m.x,0)
 
@@ -141,8 +147,11 @@ class UITests(unittest.TestCase):
     @unittest.skipUnless(os.name=='nt','Windows native flags')
     def test_overlay_does_not_activate_or_create_taskbar_button(self):
         import ctypes
-        window=PetWindow(self.store,self.pet);window.show();self.app.processEvents()
         user32=ctypes.windll.user32
+        user32.GetForegroundWindow.argtypes=[];user32.GetForegroundWindow.restype=ctypes.c_void_p
+        before=user32.GetForegroundWindow()
+        window=PetWindow(self.store,self.pet);window.show();self.app.processEvents()
+        self.assertEqual(user32.GetForegroundWindow(),before)
         user32.GetWindowLongW.argtypes=[ctypes.c_void_p,ctypes.c_int];user32.GetWindowLongW.restype=ctypes.c_long
         styles=user32.GetWindowLongW(int(window.winId()),-20)
         self.assertTrue(styles & 0x00000080)  # WS_EX_TOOLWINDOW
