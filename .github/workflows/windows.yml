@@ -1,0 +1,78 @@
+name: Windows client
+on:
+  push:
+    branches: [main, windows-port]
+    paths: ['windows/**', '.github/workflows/windows.yml', 'LICENSE']
+    tags: ['windows-v*']
+  pull_request:
+    paths: ['windows/**', '.github/workflows/windows.yml', 'LICENSE']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: windows/requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt pyinstaller==6.16.0
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }
+      - name: Tests (data, editing, physics, GUI)
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          python -m unittest discover -s tests -v
+          if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+      - name: Native Windows GUI smoke
+        run: |
+          Remove-Item Env:QT_QPA_PLATFORM -ErrorAction SilentlyContinue
+          python smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'Native GUI smoke failed' }
+      - name: Build portable exe and installer
+        run: ./build.ps1
+      - name: Frozen Windows executable smoke
+        run: |
+          python smoke.py dist/HejsPets/HejsPets.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen GUI smoke failed' }
+      - name: Install, launch and uninstall smoke
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'HejPets-installed'
+          $setup = Start-Process -FilePath release/HejsPets-4.1.0-Windows-Setup.exe -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$target`"") -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Installer exit $($setup.ExitCode)" }
+          python smoke.py "$target/HejsPets.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed GUI smoke failed' }
+          $uninstall = Start-Process -FilePath "$target/unins000.exe" -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Uninstaller exit $($uninstall.ExitCode)" }
+          if (Test-Path "$target/HejsPets.exe") { throw 'Uninstall left application executable' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HejsPets-Windows-x64
+          path: windows/release/*
+          if-no-files-found: error
+          retention-days: 30
+  release:
+    if: startsWith(github.ref, 'refs/tags/windows-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: HejsPets-Windows-x64
+          path: release
+      - name: Publish Windows release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" --title "Hej's Pets 4.1 · Windows" --notes "Windows 10/11 x64: installer and portable edition. Local photo editing, pet animations and tray controls. See windows/README.md for migration and platform differences. Unsigned preview; physical Windows and pixel-for-pixel parity acceptance remain outstanding." --prerelease

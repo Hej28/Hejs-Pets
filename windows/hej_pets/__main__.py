@@ -27,7 +27,7 @@ def main():
         QMessageBox.critical(None,'无法打开宠物屋',str(e));lock.unlock();return 1
     manager.show()
     if args.smoke_test:
-        def verify():
+        def check():
             assert manager.isVisible()
             assert len(manager.windows)==sum(bool(p.get('isVisible',True)) for p in store.pets)
             for window in manager.windows.values():
@@ -35,6 +35,12 @@ def main():
                 window.motion.start_drag(window.motion.x+90,window.motion.y+80)
                 window.motion.drag(window.motion.x+110,window.motion.y+200,.03);window.motion.end_drag();window.tick(.03)
             manager.toggle_pause();manager.toggle_pause();manager.shutdown();app.quit()
+        def verify():
+            try:check()
+            except BaseException:
+                import traceback
+                traceback.print_exc()
+                app.exit(1)
         QTimer.singleShot(800,verify)
     try:return app.exec()
     finally:manager.shutdown();lock.unlock()
