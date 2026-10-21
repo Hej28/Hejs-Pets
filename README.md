@@ -4,7 +4,7 @@ Hej做的一个小玩具。把喜欢的照片变成会在 Mac 的 Dock 和屏幕
 
 ## Windows 10/11 客户端
 
-Windows 版在同一个仓库的 [`windows/`](windows/) 目录中开发，提供安装包和解压运行的便携版。沿用 Mac 版的宠物造型、动画参数、照片编辑功能和界面配色，Dock 爬行适配为任务栏爬行。下载见 [Windows Releases](https://github.com/Hej28/Hejs-Pets/releases?q=windows&expanded=true)。
+Windows 版在同一个仓库的 [`windows/`](windows/) 目录中开发，提供安装包和解压运行的便携版。沿用 Mac 版的宠物造型、动画参数、照片编辑功能和界面配色，Dock 爬行适配为任务栏爬行。下载：[Windows 安装包](https://github.com/Hej28/Hejs-Pets/releases/download/windows-v4.1.0-preview.1/HejsPets-4.1.0-Windows-Setup.exe) · [Windows 便携版](https://github.com/Hej28/Hejs-Pets/releases/download/windows-v4.1.0-preview.1/HejsPets-4.1.0-Windows-Portable.zip) · [版本说明](https://github.com/Hej28/Hejs-Pets/releases/tag/windows-v4.1.0-preview.1)。
 
 Windows 版使用本地 OpenCV 替代 Apple Vision，新导入照片的自动抠图和五官识别会有差异；完整的功能、平台差异、构建说明和 Mac 宠物迁移方法见 [Windows 使用说明](windows/README.md)。
 

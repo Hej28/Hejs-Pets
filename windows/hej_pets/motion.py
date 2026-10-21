@@ -72,7 +72,8 @@ class Motion:
         self.direction=1
 
     def tick(self,dt,bounds,paused=False):
-        dt=clamp(dt,.001,.06);self.now+=dt
+        self.now+=max(0,dt)  # Speech/action timers use elapsed wall time, even after a stall.
+        dt=clamp(dt,.001,.06)
         if self.bubble is not None and self.now>=self.bubble_until:self.bubble=None
         if paused:return
         self.phase+=dt*(15 if self.state=='dragging' else 9)

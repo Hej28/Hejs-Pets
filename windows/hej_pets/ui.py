@@ -7,12 +7,13 @@ from pathlib import Path
 from PIL import Image
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QIcon, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
-from PySide6.QtWidgets import (QAbstractButton, QApplication, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
+from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFrame, QHBoxLayout, QLabel, QMenu, QMessageBox, QPushButton, QScrollArea, QSlider,
     QSystemTrayIcon, QTextEdit, QVBoxLayout, QWidget)
 from .data import ACTIONS, clamp, face_rect, open_image, paint_mask
 from .drawing import Character, color, qimage
 from .motion import Motion
+from .native import configure_overlay
 
 STYLE='''
 QWidget { color: #393632; font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif; font-size: 13px; }
@@ -56,6 +57,9 @@ class PetWindow(QWidget):
         self.motion=Motion(left+16+seed*max(40,right-left-32),bottom,store.settings,store.delay)
         self.motion.direction=-1 if seed>.5 else 1
         self.last_drag=time.monotonic();self.place()
+
+    def showEvent(self,event):
+        super().showEvent(event);configure_overlay(self)
 
     def bounds(self):
         screen=self.active_screen or QApplication.primaryScreen()
@@ -105,7 +109,7 @@ class PhotoCanvas(QWidget):
         self.setMouseTracking(True)
 
     def image_rect(self):
-        scale=min((self.width()-24)/self.im.width,(self.height()-24)/self.im.height)
+        scale=min((self.width()-32)/self.im.width,(self.height()-32)/self.im.height)
         w,h=self.im.width*scale,self.im.height*scale
         return QRectF((self.width()-w)/2,(self.height()-h)/2,w,h)
 
@@ -117,23 +121,34 @@ class PhotoCanvas(QWidget):
 
     def paintEvent(self,event):
         p=QPainter(self);p.setRenderHints(QPainter.Antialiasing|QPainter.SmoothPixmapTransform)
-        p.fillRect(self.rect_canvas(),color('#E8E5DD'));r=self.image_rect()
+        p.fillRect(self.rect_canvas(),color('#242322'));r=self.image_rect()
         p.drawImage(r,self.photo)
         if self.mode=='rectangle':
             selected=self.selection();shade=QPainterPath();shade.addRect(r);shade.addRect(selected);shade.setFillRule(Qt.OddEvenFill)
-            p.fillPath(shade,color('#000000',.40));p.setPen(QPen(color('#5F958A'),2));p.setBrush(Qt.NoBrush);p.drawRect(selected)
+            p.fillPath(shade,color('#000000',.56));p.setPen(QPen(color('#83E2C8'),2.2));p.setBrush(Qt.NoBrush);p.drawRect(selected)
             for point in (selected.topLeft(),selected.topRight(),selected.bottomLeft(),selected.bottomRight()):
-                p.fillRect(QRectF(point.x()-4,point.y()-4,8,8),color('#FFFDFA'))
+                p.setBrush(color('#FFFDFA'));p.drawEllipse(point,5,5)
         elif self.mode=='features':
             for key,title in [('leftEye','左眼'),('rightEye','右眼'),('mouth','嘴')]:
                 value=self.features[key];x,y=(value['x'],value['y']) if isinstance(value,dict) else value
                 pt=QPointF(r.x()+x*r.width(),r.y()+(1-y)*r.height());p.setPen(QPen(color('#F26C74'),2));p.setBrush(color('#FFFDF7'));p.drawEllipse(pt,5,5);p.drawText(pt+QPointF(8,-8),title)
-        elif self.strokes:
-            if self.mask_dirty:
-                mask=paint_mask(self.im.size,self.strokes)
-                overlay=Image.new('RGBA',self.im.size,(72,155,128,0));overlay.putalpha(mask.point(lambda v:int(v*.38)))
-                self.mask=qimage(overlay);self.mask_dirty=False
-            p.drawImage(r,self.mask)
+        else:
+            p.fillRect(r,color('#000000',.42))
+            for stroke in self.strokes:
+                if not stroke['points']:continue
+                points=[QPointF(r.x()+v[0]*r.width(),r.y()+v[1]*r.height()) for v in stroke['points']]
+                width=stroke['radius']*2*min(r.width(),r.height())
+                tint=color('#000000',.60) if stroke['erasing'] else color('#83E2C8',.62)
+                p.setBrush(tint);p.setPen(QPen(tint,width,Qt.SolidLine,Qt.RoundCap,Qt.RoundJoin))
+                if len(points)==1:p.drawEllipse(points[0],width/2,width/2)
+                else:
+                    shape=QPainterPath(points[0])
+                    for point in points[1:]:shape.lineTo(point)
+                    if stroke.get('fillsInterior'):shape.closeSubpath()
+                    p.setBrush(Qt.NoBrush);p.drawPath(shape)
+            if not any(stroke['points'] and not stroke['erasing'] for stroke in self.strokes):
+                p.setPen(color('#FFFFFF'));font=QFont();font.setPixelSize(15);font.setWeight(QFont.DemiBold);p.setFont(font)
+                p.drawText(QRectF(55,self.height()/2-18,self.width()-110,36),Qt.AlignCenter,'沿人物轮廓画一圈 · 松手后圈内全部保留，交叉也不会反选')
         p.end()
 
     def rect_canvas(self):return QRectF(0,0,self.width(),self.height())
@@ -178,29 +193,52 @@ class PhotoCanvas(QWidget):
         if self.strokes:self.strokes.pop();self.mask_dirty=True;self.update()
 
 
+class Segmented(QWidget):
+    currentIndexChanged=Signal(int)
+    def __init__(self,parent,titles):
+        super().__init__(parent);self.buttons=[];self.group=QButtonGroup(self);self.group.setExclusive(True)
+        layout=QHBoxLayout(self);layout.setContentsMargins(0,0,0,0);layout.setSpacing(0)
+        for index,title in enumerate(titles):
+            item=QPushButton(title,self);item.setCheckable(True)
+            item.setStyleSheet('QPushButton{background:#FFFDFA;color:#655F57;border:1px solid #D8D3C9;border-radius:4px;font-weight:400;padding:3px;}QPushButton:checked{background:#DDEBE6;color:#355F57;border-color:#8EB6A9;}QPushButton:disabled{color:#A7A198;background:#F2EFE9;}')
+            self.group.addButton(item,index);self.buttons.append(item);layout.addWidget(item)
+        self.group.idClicked.connect(self.currentIndexChanged.emit);self.setCurrentIndex(0)
+    def currentIndex(self):return self.group.checkedId()
+    def setCurrentIndex(self,index):self.buttons[index].setChecked(True);self.currentIndexChanged.emit(index)
+
+
 class CropDialog(QDialog):
     def __init__(self,parent,store,pet,clothing=False):
         super().__init__(parent);self.store,self.pet,self.clothing=store,pet,clothing
-        self.setWindowTitle('衣服材质' if clothing else '调整头部裁切');self.resize(760,700)
-        self.canvas=PhotoCanvas(open_image(store.path(pet['imageFilename'])),pet,clothing)
-        layout=QVBoxLayout(self);layout.setContentsMargins(20,20,20,24);layout.addWidget(self.canvas,1)
-        self.hint=QLabel('沿轮廓画一圈，内部自动填满；也可涂抹补选、擦除修边。');layout.addWidget(self.hint)
-        row=QHBoxLayout();layout.addLayout(row)
-        self.mode=QComboBox();self.modes=['outline','brush','erase']+([] if clothing else ['rectangle'])
-        self.mode.addItems(['自由圈选','涂抹补选','橡皮擦']+([] if clothing else ['矩形范围']))
-        self.mode.currentIndexChanged.connect(self.change_mode);row.addWidget(self.mode)
-        self.slider=QSlider(Qt.Horizontal);self.slider.setRange(4,80);self.slider.setValue(26);self.slider.setFixedWidth(90)
-        self.slider.valueChanged.connect(self.brush);row.addWidget(self.slider)
-        undo=QPushButton('撤销');undo.clicked.connect(self.canvas.undo);row.addWidget(undo)
-        auto=QPushButton('自动检测' if clothing else '自动识别');auto.clicked.connect(self.auto);row.addWidget(auto)
-        row.addStretch()
-        cancel=QPushButton('取消');cancel.clicked.connect(self.reject);row.addWidget(cancel)
-        self.apply=QPushButton('使用涂抹衣料' if clothing else '使用选区');self.apply.clicked.connect(self.commit);row.addWidget(self.apply)
-        self.brush(26)
+        self.setWindowTitle('衣服材质' if clothing else '调整头部裁切');height=690 if clothing else 720;self.setFixedSize(760,height)
+        self.canvas=PhotoCanvas(open_image(store.path(pet['imageFilename'])),pet,clothing);self.canvas.setParent(self)
+        self.canvas.setGeometry(20,20 if clothing else 65,720,570 if clothing else 555)
+        self.hint=label(self,'',(24,height-92,650,20),13,tint='#6F6A62')
+        self.method=None
+        if not clothing:
+            self.method=Segmented(self,['自动识别','矩形范围','自由圈选']);self.method.setGeometry(210,16,340,30);self.method.currentIndexChanged.connect(self.change_method)
+        self.mode=Segmented(self,['圈选衣料' if clothing else '圈选轮廓','涂抹补选','橡皮擦']);self.mode.setGeometry(24,height-62,220,28)
+        self.modes=['outline','brush','erase'];self.mode.currentIndexChanged.connect(self.change_mode)
+        self.slider=QSlider(Qt.Horizontal,self);self.slider.setGeometry(252,height-62,90,28);self.slider.setRange(8,90);self.slider.setValue(24);self.slider.valueChanged.connect(self.brush)
+        self.undo_button=button(self,'撤销',(350,height-63,58,31),self.canvas.undo,'white')
+        self.reset_button=button(self,'自动检测' if clothing else '清空',(416,height-63,82 if clothing else 58,31),self.auto if clothing else self.clear,'white')
+        button(self,'取消',(560,height-64,80,36),self.reject,'white')
+        self.apply=button(self,'使用涂抹衣料' if clothing else '使用矩形范围',(648,height-64,96,36),self.commit,'brown' if clothing else 'green')
+        self.brush(24)
+        if clothing:self.hint.setText('沿一块干净衣料画一圈，内部会自动填满；也可涂抹补选或擦除。')
+        else:self.method.setCurrentIndex(1)
 
     def brush(self,value):
         r=self.canvas.image_rect();self.canvas.radius=value/max(1,min(r.width(),r.height()))/2
-    def change_mode(self,index):self.canvas.mode=self.modes[index];self.canvas.update()
+    def clear(self):self.canvas.strokes.clear();self.canvas.mask_dirty=True;self.canvas.update()
+    def change_mode(self,index):
+        if self.clothing or self.method.currentIndex()==2:self.canvas.mode=self.modes[index]
+        self.canvas.update()
+    def change_method(self,index):
+        freehand=index==2;self.canvas.mode=self.modes[self.mode.currentIndex()] if freehand else 'rectangle'
+        for control in (self.mode,self.slider,self.undo_button,self.reset_button):control.setEnabled(freehand)
+        hints=['自动检测头发、脸和脖子；不满意可切换到矩形范围或自由圈选。','拖动矩形或四角圆点，框住头发、脸和需要保留的脖子。','沿轮廓画一整圈，松手后圈内全部保留；线条交叉也不会把中间挖空。']
+        self.hint.setText(hints[index]);self.apply.setText(['使用自动识别','使用矩形范围','使用自由圈选'][index]);self.canvas.update()
     def perform(self,callback):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:callback()
@@ -214,7 +252,8 @@ class CropDialog(QDialog):
             if not self.canvas.strokes:
                 QMessageBox.information(self,'尚未选择衣料','先沿衣料圈一圈或涂抹一块区域。');return
             self.perform(lambda:self.store.update_clothing(self.pet,self.canvas.strokes))
-        elif self.canvas.mode=='rectangle':
+        elif self.method.currentIndex()==0:self.auto()
+        elif self.method.currentIndex()==1:
             r=self.canvas.rect
             self.perform(lambda:self.store.update_head(self.pet,'rectangle',(r.x(),1-r.y()-r.height(),r.width(),r.height())))
         else:self.perform(lambda:self.store.update_head(self.pet,'freehand',strokes=self.canvas.strokes))
@@ -333,7 +372,7 @@ class Manager(QWidget):
         QApplication.instance().aboutToQuit.connect(self.shutdown)
 
     def paintEvent(self,event):
-        p=QPainter(self);p.setRenderHint(QPainter.Antialiasing);g=QLinearGradient(0,0,self.width(),self.height());g.setColorAt(0,color('#F7F3EA'));g.setColorAt(1,color('#EEF3EF'));p.fillRect(self.rect(),g);p.setBrush(color('#FFFFFF',.30));p.setPen(Qt.NoPen);p.drawEllipse(QRectF(self.width()-180,-90,330,330));p.end()
+        p=QPainter(self);p.setRenderHint(QPainter.Antialiasing);g=QLinearGradient(0,0,self.width(),self.height());g.setColorAt(0,color('#F7F3EA'));g.setColorAt(1,color('#EEF3EF'));p.fillRect(self.rect(),g);p.setBrush(color('#FFFFFF',.30));p.setPen(Qt.NoPen);p.drawEllipse(QRectF(self.width()-190,-80,250,210));p.setBrush(color('#E6B8A3',.13));p.drawEllipse(QRectF(-90,self.height()-140,230,180));p.end()
     def resizeEvent(self,event):
         if not hasattr(self,'drop'):return
         w,h=self.width(),self.height();self.maker.move(w-111,49);self.drop.resize(w-60,105);self.choose.move(w-167,34);self.scroll.setGeometry(30,270,w-60,h-350)
@@ -378,8 +417,9 @@ class Manager(QWidget):
         for pet in self.store.pets:self.toggle(pet,value)
         self.reload()
     def delete(self,pet):
-        choice=QMessageBox.question(self,f"删除“{pet['name']}”？",'只会删除 Hej’s Pets 保存的副本，不会碰原照片。',QMessageBox.Yes|QMessageBox.No,QMessageBox.No)
-        if choice!=QMessageBox.Yes:return
+        question=QMessageBox(QMessageBox.Question,f"删除“{pet['name']}”？",'只会删除 Hej’s Pets 保存的副本，不会碰原照片。',parent=self)
+        remove=question.addButton('删除',QMessageBox.DestructiveRole);cancel=question.addButton('取消',QMessageBox.RejectRole);question.setDefaultButton(cancel);question.exec()
+        if question.clickedButton()!=remove:return
         try:self.store.remove(pet)
         except OSError as e:QMessageBox.warning(self,'无法删除',str(e));return
         self.dismiss(pet);self.reload()
