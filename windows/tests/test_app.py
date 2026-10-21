@@ -160,6 +160,17 @@ class UITests(unittest.TestCase):
         self.assertTrue(styles & 0x00000008)  # WS_EX_TOPMOST
         window.close()
 
+    def test_original_crop_modes_and_clear(self):
+        editor=CropDialog(None,self.store,self.pet)
+        self.assertEqual(editor.method.currentIndex(),1)
+        self.assertEqual(editor.canvas.mode,'rectangle')
+        self.assertFalse(editor.slider.isEnabled())
+        editor.method.setCurrentIndex(2);self.assertTrue(editor.slider.isEnabled())
+        editor.mode.setCurrentIndex(2);self.assertEqual(editor.canvas.mode,'erase')
+        editor.canvas.strokes=[{'points':[[.2,.2]],'radius':.02,'erasing':False}]
+        editor.clear();self.assertFalse(editor.canvas.strokes)
+        editor.method.setCurrentIndex(0);self.assertEqual(editor.apply.text(),'使用自动识别');editor.close()
+
     def test_rectangle_resize_and_paint_undo(self):
         canvas=PhotoCanvas(self.im,self.pet);canvas.resize(720,570);canvas.show();self.app.processEvents();canvas.mode='rectangle'
         r=canvas.image_rect();start=QPointF(r.x()+r.width()*.02,r.y()+r.height()*.02).toPoint();end=QPointF(r.x()+r.width()*.5,r.y()+r.height()*.5).toPoint()
