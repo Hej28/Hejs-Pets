@@ -2,6 +2,12 @@
 
 Hej做的一个小玩具。把喜欢的照片变成会在 Mac 的 Dock 和屏幕边缘爬行的小宠物。现在处在能用的状态。Hej’s Pets 是一个轻量的原生 macOS 应用；照片处理和宠物资料都留在本机。
 
+## Windows 10/11 客户端
+
+Windows 版在同一个仓库的 [`windows/`](windows/) 目录中开发，提供安装包和解压运行的便携版。沿用 Mac 版的宠物造型、动画参数、照片编辑功能和界面配色，Dock 爬行适配为任务栏爬行。下载见 [Windows Releases](https://github.com/Hej28/Hejs-Pets/releases?q=windows&expanded=true)。
+
+Windows 版使用本地 OpenCV 替代 Apple Vision，新导入照片的自动抠图和五官识别会有差异；完整的功能、平台差异、构建说明和 Mac 宠物迁移方法见 [Windows 使用说明](windows/README.md)。
+
 ## 能做什么
 
 - 拖拽入 JPG、PNG、HEIC 图片，或点击「选择照片」从文件夹添加；可以添加多只宠物、隐藏或删除。
@@ -46,7 +52,9 @@ Hej做的一个小玩具。把喜欢的照片变成会在 Mac 的 Dock 和屏幕
 | `Sources/HejPets.swift` | 应用界面、裁切、宠物动画与本地数据 |
 | `Info.plist` | macOS 应用信息 |
 | `AppIcon.icns`、`AppIcon.iconset/` | 应用图标 |
-| `build.sh` | 本地构建脚本 |
+| `build.sh` | macOS 本地构建脚本 |
+| `windows/` | Windows 客户端、测试与安装包配置 |
+| `.github/workflows/windows.yml` | Windows 构建、安装/卸载检查及发布 |
 
 欢迎提交问题和改进建议。请尽量提供 macOS 版本、复现步骤和预期/实际结果，不要上传私人照片。
 

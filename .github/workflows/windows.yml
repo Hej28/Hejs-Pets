@@ -30,7 +30,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }
       - name: Tests (data, editing, physics, GUI)
         run: |
-          $env:QT_QPA_PLATFORM = 'offscreen'
+          $env:QT_QPA_PLATFORM = 'windows'
           python -m unittest discover -s tests -v
           if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
       - name: Native Windows GUI smoke
