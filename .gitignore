@@ -26,3 +26,16 @@ crop-repair-backup/
 *.app
 *.zip
 outputs/
+
+# Windows client
+__pycache__/
+*.pyc
+.venv/
+windows/dist/
+windows/build/
+windows/release/
+*.spec
+!windows/assets/AppIcon.png
+!windows/assets/AppIcon.ico
+!windows/tests/fixtures/synthetic.heic
+windows/qa/
