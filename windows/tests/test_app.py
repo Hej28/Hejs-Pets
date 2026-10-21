@@ -78,7 +78,8 @@ class DataTests(unittest.TestCase):
     def test_edit_clothing_reset_head_persist(self):
         pet=self.store.add(self.source);s=[{'points':[[.3,.55],[.7,.55],[.7,.8],[.3,.8]],'radius':.005,'erasing':False,'fillsInterior':True}]
         self.store.update_clothing(pet,s);self.assertTrue(self.store.path(pet['clothingTextureFilename']).exists())
-        self.store.update_clothing(pet);self.assertIsNone(pet['clothingTextureFilename'])
+        old=self.store.path(pet['clothingTextureFilename'])
+        self.store.update_clothing(pet);self.assertIsNone(pet['clothingTextureFilename']);self.assertFalse(old.exists())
         self.store.update_head(pet,'freehand',strokes=s);self.assertEqual(Store(self.store.root).pets[0]['headMaskStrokes'],s)
 
 
@@ -137,6 +138,19 @@ class UITests(unittest.TestCase):
         self.assertEqual(self.store.settings['messages'],['测试一','测试二']);self.assertEqual(self.store.settings['animationFPS'],60)
         editor=CropDialog(manager,self.store,self.pet);editor.canvas.mode='rectangle';editor.canvas.rect=QRectF(.2,.1,.6,.5);editor.commit();self.assertEqual(editor.result(),QDialog.Accepted)
         manager.shutdown();manager.close();self.assertFalse(manager.windows);self.assertFalse(manager.timer.isActive())
+    @unittest.skipUnless(os.name=='nt','Windows native flags')
+    def test_overlay_does_not_activate_or_create_taskbar_button(self):
+        import ctypes
+        window=PetWindow(self.store,self.pet);window.show();self.app.processEvents()
+        user32=ctypes.windll.user32
+        user32.GetWindowLongW.argtypes=[ctypes.c_void_p,ctypes.c_int];user32.GetWindowLongW.restype=ctypes.c_long
+        styles=user32.GetWindowLongW(int(window.winId()),-20)
+        self.assertTrue(styles & 0x00000080)  # WS_EX_TOOLWINDOW
+        self.assertTrue(styles & 0x00080000)  # WS_EX_LAYERED
+        self.assertTrue(styles & 0x08000000)  # WS_EX_NOACTIVATE
+        self.assertTrue(styles & 0x00000008)  # WS_EX_TOPMOST
+        window.close()
+
     def test_rectangle_resize_and_paint_undo(self):
         canvas=PhotoCanvas(self.im,self.pet);canvas.resize(720,570);canvas.show();self.app.processEvents();canvas.mode='rectangle'
         r=canvas.image_rect();start=QPointF(r.x()+r.width()*.02,r.y()+r.height()*.02).toPoint();end=QPointF(r.x()+r.width()*.5,r.y()+r.height()*.5).toPoint()

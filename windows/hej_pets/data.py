@@ -132,7 +132,7 @@ def features(im):
     left, right = ((x+w*.34, y+h*.38), (x+w*.66, y+h*.38))
     if len(centers) >= 2:
         left, right = centers[0], centers[-1]
-    # Mouth position is an estimate relative to the detected face; manual placement is available.
+    # Mouth position is estimated relative to the locally detected face.
     def norm(point):
         return [point[0]/im.width, 1-point[1]/im.height]
     return dict(leftEye=norm(left), rightEye=norm(right), mouth=norm((x+w*.5, y+h*.72)))
@@ -338,6 +338,8 @@ class Store:
             pet.clear();pet.update(updated)
             try: self.save()
             except OSError: pet.clear();pet.update(old);raise
+            if old.get('clothingTextureFilename'):
+                self.path(old['clothingTextureFilename']).unlink(missing_ok=True)
 
     def _commit_image(self,pet,updated,image,filename):
         # Unique output filename lets JSON replacement commit the edit atomically.

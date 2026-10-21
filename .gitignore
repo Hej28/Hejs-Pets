@@ -38,3 +38,4 @@ windows/release/
 !windows/assets/AppIcon.png
 !windows/assets/AppIcon.ico
 !windows/tests/fixtures/synthetic.heic
+windows/qa/

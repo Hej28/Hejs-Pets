@@ -34,7 +34,17 @@ def main():
                 window.motion.prepare('perimeter',window.bounds());window.tick(.03)
                 window.motion.start_drag(window.motion.x+90,window.motion.y+80)
                 window.motion.drag(window.motion.x+110,window.motion.y+200,.03);window.motion.end_drag();window.tick(.03)
-            manager.toggle_pause();manager.toggle_pause();manager.shutdown();app.quit()
+            manager.toggle_pause();manager.toggle_pause()
+            destination=os.environ.get('HEJPETS_SMOKE_OUTPUT')
+            if destination:
+                from .ui import SettingsDialog, CropDialog
+                output=Path(destination);output.mkdir(parents=True,exist_ok=True)
+                manager.grab().save(str(output/'manager.png'))
+                settings=SettingsDialog(manager,store);settings.show();app.processEvents();settings.grab().save(str(output/'settings.png'));settings.close()
+                if store.pets:
+                    editor=CropDialog(manager,store,store.pets[0]);editor.show();app.processEvents();editor.grab().save(str(output/'editor.png'));editor.close()
+                    window=next(iter(manager.windows.values()));window.motion.state='walking';window.motion.edge='bottom';window.motion.action='dockCrawl';window.grab().save(str(output/'pet.png'))
+            manager.shutdown();app.quit()
         def verify():
             try:check()
             except BaseException:

@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QIcon, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
+from PySide6.QtWidgets import (QAbstractButton, QApplication, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFrame, QHBoxLayout, QLabel, QMenu, QMessageBox, QPushButton, QScrollArea, QSlider,
     QSystemTrayIcon, QTextEdit, QVBoxLayout, QWidget)
 from .data import ACTIONS, clamp, face_rect, open_image, paint_mask
@@ -210,7 +210,10 @@ class CropDialog(QDialog):
     def auto(self):
         self.perform(lambda:self.store.update_clothing(self.pet) if self.clothing else self.store.update_head(self.pet))
     def commit(self):
-        if self.clothing:self.perform(lambda:self.store.update_clothing(self.pet,self.canvas.strokes))
+        if self.clothing:
+            if not self.canvas.strokes:
+                QMessageBox.information(self,'尚未选择衣料','先沿衣料圈一圈或涂抹一块区域。');return
+            self.perform(lambda:self.store.update_clothing(self.pet,self.canvas.strokes))
         elif self.canvas.mode=='rectangle':
             r=self.canvas.rect
             self.perform(lambda:self.store.update_head(self.pet,'rectangle',(r.x(),1-r.y()-r.height(),r.width(),r.height())))
@@ -265,6 +268,28 @@ class DropZone(QFrame):
         p.setPen(QPen(color('#5F958A'),2));p.drawLine(72,27,72,41);p.drawLine(65,34,79,34);p.end()
 
 
+class VisibilitySwitch(QAbstractButton):
+    def __init__(self,parent):
+        super().__init__(parent);self.setCheckable(True);self.setAccessibleName('在桌面显示');self.setCursor(Qt.PointingHandCursor)
+    def paintEvent(self,event):
+        p=QPainter(self);p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(QPen(color('#5F958A' if self.isChecked() else '#C4C6C1'),1));p.setBrush(color('#75A997' if self.isChecked() else '#D9DDD7'))
+        p.drawRoundedRect(QRectF(1,2,36,21),10.5,10.5)
+        p.setPen(Qt.NoPen);p.setBrush(color('#FFFFFF'));p.drawEllipse(QRectF(18 if self.isChecked() else 3,4,17,17))
+        if self.hasFocus():p.setPen(QPen(color('#355F57'),1,Qt.DotLine));p.setBrush(Qt.NoBrush);p.drawRoundedRect(QRectF(0,0,39,25),12,12)
+        p.end()
+
+
+class DeleteButton(QAbstractButton):
+    def __init__(self,parent):
+        super().__init__(parent);self.setToolTip('删除宠物');self.setAccessibleName('删除宠物');self.setCursor(Qt.PointingHandCursor)
+    def paintEvent(self,event):
+        p=QPainter(self);p.setRenderHint(QPainter.Antialiasing);p.setPen(QPen(color('#A55B58'),1.6,Qt.SolidLine,Qt.RoundCap,Qt.RoundJoin));p.setBrush(Qt.NoBrush)
+        p.drawLine(9,10,23,10);p.drawLine(13,7,19,7);p.drawLine(11,12,12,24);p.drawLine(12,24,20,24);p.drawLine(20,24,21,12);p.drawLine(15,13,15,21);p.drawLine(18,13,18,21)
+        if self.hasFocus():p.drawRoundedRect(QRectF(1,1,29,29),6,6)
+        p.end()
+
+
 class Card(QFrame):
     def __init__(self,parent,store,pet,on_toggle,on_delete,on_edit):
         super().__init__(parent);self.setFixedHeight(76);self.setMinimumWidth(484)
@@ -276,8 +301,8 @@ class Card(QFrame):
         label(self,pet['name'],(78,25,125,25),14,True)
         button(self,'调整裁切',(212,22,82,31),lambda:on_edit(pet,False))
         button(self,'衣服材质',(300,22,88,31),lambda:on_edit(pet,True),'brown')
-        self.toggle=QCheckBox(self);self.toggle.setGeometry(405,25,40,26);self.toggle.setToolTip('在桌面显示');self.toggle.setChecked(pet.get('isVisible',True));self.toggle.toggled.connect(lambda value:on_toggle(pet,value))
-        delete=button(self,'×',(450,22,32,31),lambda:on_delete(pet),'red');delete.setToolTip('删除宠物');delete.setAccessibleName('删除宠物')
+        self.toggle=VisibilitySwitch(self);self.toggle.setGeometry(405,25,40,26);self.toggle.setToolTip('在桌面显示');self.toggle.setChecked(pet.get('isVisible',True));self.toggle.toggled.connect(lambda value:on_toggle(pet,value))
+        delete=DeleteButton(self);delete.setGeometry(450,22,32,31);delete.clicked.connect(lambda:on_delete(pet))
 
 
 class Manager(QWidget):

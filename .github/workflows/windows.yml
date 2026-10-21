@@ -42,6 +42,7 @@ jobs:
         run: ./build.ps1
       - name: Frozen Windows executable smoke
         run: |
+          $env:HEJPETS_SMOKE_OUTPUT = Join-Path (Get-Location) 'qa'
           python smoke.py dist/HejsPets/HejsPets.exe
           if ($LASTEXITCODE -ne 0) { throw 'Frozen GUI smoke failed' }
       - name: Install, launch and uninstall smoke
@@ -54,6 +55,10 @@ jobs:
           $uninstall = Start-Process -FilePath "$target/unins000.exe" -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Uninstaller exit $($uninstall.ExitCode)" }
           if (Test-Path "$target/HejsPets.exe") { throw 'Uninstall left application executable' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-GUI-screenshots
+          path: windows/qa/*.png
       - uses: actions/upload-artifact@v4
         with:
           name: HejsPets-Windows-x64
